@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Locale } from 'theme-base';
 import {
@@ -76,6 +76,35 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
     }
   }, [state.targetNormalized, markUsed]);
 
+  // Suporte ao teclado físico na Web
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (state.phase === 'won' || state.phase === 'lost') {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          reset();
+        }
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submit();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        removeLetter();
+      } else if (/^[a-zA-Z]$/.test(e.key)) {
+        e.preventDefault();
+        addLetter(e.key.toUpperCase());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.phase, submit, removeLetter, addLetter, reset]);
+
   const errorMessage = useMemo(() => {
     if (state.lastRejection === 'too_short') return strings.errors.tooShort;
     if (state.lastRejection === 'invalid_word') return strings.errors.invalidWord;
@@ -98,18 +127,27 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
     const hasProgress =
       state.guesses.length > 0 || state.currentGuess.length > 0;
     if (state.phase === 'playing' && hasProgress) {
-      Alert.alert(
-        strings.language.switchConfirm.title,
-        strings.language.switchConfirm.message,
-        [
-          { text: strings.language.switchConfirm.keep, style: 'cancel' },
-          {
-            text: strings.language.switchConfirm.discard,
-            style: 'destructive',
-            onPress: () => onChangeLocale(next),
-          },
-        ],
-      );
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const confirmed = window.confirm(
+          `${strings.language.switchConfirm.title}\n\n${strings.language.switchConfirm.message}`,
+        );
+        if (confirmed) {
+          onChangeLocale(next);
+        }
+      } else {
+        Alert.alert(
+          strings.language.switchConfirm.title,
+          strings.language.switchConfirm.message,
+          [
+            { text: strings.language.switchConfirm.keep, style: 'cancel' },
+            {
+              text: strings.language.switchConfirm.discard,
+              style: 'destructive',
+              onPress: () => onChangeLocale(next),
+            },
+          ],
+        );
+      }
     } else {
       onChangeLocale(next);
     }
@@ -140,23 +178,25 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
           opacity={theme.background?.opacity}
         />
       ) : null}
-      <Header
-        title={strings.appTitle}
-        locale={locale}
-        onLanguagePress={handleLanguagePress}
-      />
-      <Toast showKey={shakeKey} message={errorMessage} />
-      <View style={styles.boardArea}>
-        <Board
-          guesses={state.guesses}
-          currentGuess={state.currentGuess}
-          wordLength={state.config.wordLength}
-          maxAttempts={state.config.maxAttempts}
-          shakeKey={shakeKey}
+      <View style={styles.contentContainer}>
+        <Header
+          title={strings.appTitle}
+          locale={locale}
+          onLanguagePress={handleLanguagePress}
         />
-      </View>
-      <View style={[styles.keyboardArea, { paddingBottom: theme.spacing.padding }]}>
-        <Keyboard letterStates={state.letterStates} onPress={handleKey} />
+        <Toast showKey={shakeKey} message={errorMessage} />
+        <View style={styles.boardArea}>
+          <Board
+            guesses={state.guesses}
+            currentGuess={state.currentGuess}
+            wordLength={state.config.wordLength}
+            maxAttempts={state.config.maxAttempts}
+            shakeKey={shakeKey}
+          />
+        </View>
+        <View style={[styles.keyboardArea, { paddingBottom: theme.spacing.padding }]}>
+          <Keyboard letterStates={state.letterStates} onPress={handleKey} />
+        </View>
       </View>
 
       {isEnd ? (
@@ -185,6 +225,12 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   boardArea: {
     flex: 1,

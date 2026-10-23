@@ -6,7 +6,12 @@ module.exports = {
   orientation: 'portrait',
   userInterfaceStyle: 'light',
   primaryColor: '#2F80ED',
-  platforms: ['android', 'ios'],
+  platforms: ['android', 'ios', 'web'],
+  web: {
+    bundler: 'metro',
+    output: 'single',
+    favicon: './assets/icon.png',
+  },
   assetBundlePatterns: ['**/*'],
   icon: './assets/icon.png',
   plugins: [
