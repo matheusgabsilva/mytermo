@@ -7,20 +7,47 @@ export type KeyValue = string | 'ENTER' | 'BACK';
 export interface KeyProps {
   value: KeyValue;
   state?: LetterState;
+  /** Estado por tabuleiro (ex: no dueto array com 2 estados, no quarteto com 4) */
+  boardStates?: LetterState[];
   onPress: (value: KeyValue) => void;
   flex?: number;
   label?: string;
 }
 
-export function Key({ value, state = 'empty', onPress, flex = 1, label }: KeyProps) {
+export function Key({
+  value,
+  state = 'empty',
+  boardStates,
+  onPress,
+  flex = 1,
+  label,
+}: KeyProps) {
   const theme = useTheme();
 
-  const isFilledState =
-    state === 'correct' || state === 'present' || state === 'absent';
-  const bg = isFilledState ? theme.colors.key[state] : theme.colors.key.default;
-  const color = isFilledState ? theme.colors.key.textOnFilled : theme.colors.key.text;
+  const isSpecial = value === 'ENTER' || value === 'BACK';
+  const display =
+    label ?? (value === 'BACK' ? '⌫' : value === 'ENTER' ? '↵' : value);
 
-  const display = label ?? (value === 'BACK' ? '⌫' : value === 'ENTER' ? '↵' : value);
+  // Se boardStates for fornecido e tiver múltiplos tabuleiros
+  const hasMultiBoards =
+    !isSpecial && boardStates && boardStates.length > 1;
+
+  const getColorForState = (st?: LetterState) => {
+    if (st === 'correct' || st === 'present' || st === 'absent') {
+      return theme.colors.key[st];
+    }
+    return theme.colors.key.default;
+  };
+
+  // Se há algum estado preenchido, define cor do texto
+  const hasFilled =
+    hasMultiBoards
+      ? boardStates!.some((s) => s === 'correct' || s === 'present' || s === 'absent')
+      : state === 'correct' || state === 'present' || state === 'absent';
+
+  const textColor = hasFilled
+    ? theme.colors.key.textOnFilled
+    : theme.colors.key.text;
 
   return (
     <Pressable
@@ -29,13 +56,70 @@ export function Key({ value, state = 'empty', onPress, flex = 1, label }: KeyPro
       onPress={() => onPress(value)}
       style={({ pressed }) => [
         styles.key,
-        { backgroundColor: bg, flex, opacity: pressed ? 0.7 : 1 },
+        {
+          flex,
+          backgroundColor: hasMultiBoards
+            ? theme.colors.key.default
+            : getColorForState(state),
+          opacity: pressed ? 0.7 : 1,
+        },
       ]}
     >
-      <View pointerEvents="none">
+      {/* Background particionado para multi-boards (Dueto: split vertical / Quarteto: 4 quadrantes) */}
+      {hasMultiBoards && boardStates!.length === 2 ? (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <View style={styles.splitRow}>
+            <View
+              style={[
+                styles.splitHalf,
+                { backgroundColor: getColorForState(boardStates![0]) },
+              ]}
+            />
+            <View
+              style={[
+                styles.splitHalf,
+                { backgroundColor: getColorForState(boardStates![1]) },
+              ]}
+            />
+          </View>
+        </View>
+      ) : hasMultiBoards && boardStates!.length === 4 ? (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <View style={styles.quadrantRow}>
+            <View
+              style={[
+                styles.quadrantCell,
+                { backgroundColor: getColorForState(boardStates![0]) },
+              ]}
+            />
+            <View
+              style={[
+                styles.quadrantCell,
+                { backgroundColor: getColorForState(boardStates![1]) },
+              ]}
+            />
+          </View>
+          <View style={styles.quadrantRow}>
+            <View
+              style={[
+                styles.quadrantCell,
+                { backgroundColor: getColorForState(boardStates![2]) },
+              ]}
+            />
+            <View
+              style={[
+                styles.quadrantCell,
+                { backgroundColor: getColorForState(boardStates![3]) },
+              ]}
+            />
+          </View>
+        </View>
+      ) : null}
+
+      <View pointerEvents="none" style={styles.textWrapper}>
         <Text
           style={{
-            color,
+            color: textColor,
             fontSize: theme.typography.sizes.key,
             fontFamily: theme.typography.fontFamily.bold,
             fontWeight: '700',
@@ -55,5 +139,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginHorizontal: 2,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  textWrapper: {
+    zIndex: 2,
+  },
+  splitRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  splitHalf: {
+    flex: 1,
+  },
+  quadrantRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  quadrantCell: {
+    flex: 1,
   },
 });

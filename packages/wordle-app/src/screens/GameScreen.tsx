@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Alert, Platform, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Locale } from 'theme-base';
+import type { GameMode } from 'wordle-engine';
 import {
   BackgroundImage,
   Board,
@@ -13,70 +20,69 @@ import {
   useTheme,
   type KeyValue,
 } from 'wordle-ui';
-import { useGame } from '../hooks/useGame';
+import { useMultiGame } from '../hooks/useMultiGame';
 import { usePersistedUsedWords } from '../hooks/usePersistedUsedWords';
-import { getExplanation, interpolate, resolveStrings } from '../i18n';
-import { pickNext } from '../services/wordPicker';
+import {
+  pickDailyWords,
+  pickMultipleWords,
+} from '../services/multiWordPicker';
 
-export interface GameScreenProps {
-  locale: Locale;
-  onChangeLocale: (next: Locale) => void;
-}
-
-export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
+export function GameScreen() {
   const theme = useTheme();
-  const strings = useMemo(() => resolveStrings(theme, locale), [theme, locale]);
+  const { width } = useWindowDimensions();
+  const [currentMode, setCurrentMode] = useState<GameMode>('termo');
+  const [playType, setPlayType] = useState<'free' | 'daily'>('free');
 
-  const wordList = theme.wordList[locale];
-  const primaryList = theme.wordList.primary?.[locale];
-
+  const wordList = theme.wordList.pt;
   const validSet = useMemo(() => {
-    const extra = theme.wordList.validGuesses?.[locale] ?? [];
+    const extra = theme.wordList.validGuesses?.pt ?? [];
     return new Set<string>([...wordList, ...extra]);
-  }, [wordList, theme.wordList.validGuesses, locale]);
+  }, [wordList, theme.wordList.validGuesses]);
 
-  const config = useMemo(
-    () => ({
-      wordLength: theme.gameConfig?.wordLength,
-      maxAttempts: theme.gameConfig?.maxAttempts,
-      isValidGuess: (g: string) => validSet.has(g),
-    }),
-    [theme.gameConfig?.wordLength, theme.gameConfig?.maxAttempts, validSet],
+  const { used, loaded: usedLoaded, markUsed } = usePersistedUsedWords(
+    theme.id,
+    'pt',
   );
 
-  // Persistência de palavras já mostradas (por theme + locale). O picker
-  // usa isso para evitar repetir até esgotar; primary esgota antes do resto.
-  const { used, loaded: usedLoaded, markUsed, reset: resetUsed } =
-    usePersistedUsedWords(theme.id, locale);
-
-  // Ref garante que o picker sempre vê `used` mais recente, sem precisar
-  // refazer a closure do useGame.
   const usedRef = useRef(used);
   usedRef.current = used;
 
-  const pickNextTarget = useCallback((): string => {
-    return pickNext({
-      all: wordList,
-      primary: primaryList,
-      used: usedRef.current,
-      onResetUsed: resetUsed,
+  const pickTargetsForMode = useCallback(
+    (mode: GameMode): string[] => {
+      const count = mode === 'quarteto' ? 4 : mode === 'dueto' ? 2 : 1;
+      if (playType === 'daily') {
+        return pickDailyWords(wordList, count, mode);
+      }
+      return pickMultipleWords(wordList, count, usedRef.current);
+    },
+    [wordList, playType],
+  );
+
+  const config = useMemo(
+    () => ({
+      wordLength: 5,
+      isValidGuess: (g: string) => validSet.has(g),
+    }),
+    [validSet],
+  );
+
+  const { state, shakeKey, addLetter, removeLetter, submit, reset } =
+    useMultiGame({
+      mode: currentMode,
+      pickTargets: pickTargetsForMode,
+      config,
     });
-  }, [wordList, primaryList, resetUsed]);
 
-  const { state, shakeKey, addLetter, removeLetter, submit, reset } = useGame({
-    pickNextTarget,
-    config,
-  });
-
-  // Marca o target atual como "visto" assim que ele muda.
-  // Gera persistência mesmo se o jogador fechar o app antes de terminar.
+  // Marca palavras como usadas no modo livre
   useEffect(() => {
-    if (state.targetNormalized) {
-      markUsed(state.targetNormalized);
+    if (playType === 'free') {
+      state.boards.forEach((b) => {
+        if (b.targetNormalized) markUsed(b.targetNormalized);
+      });
     }
-  }, [state.targetNormalized, markUsed]);
+  }, [state.boards, markUsed, playType]);
 
-  // Suporte ao teclado físico na Web
+  // Teclado físico no Desktop / Web
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
@@ -105,61 +111,48 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.phase, submit, removeLetter, addLetter, reset]);
 
-  const errorMessage = useMemo(() => {
-    if (state.lastRejection === 'too_short') return strings.errors.tooShort;
-    if (state.lastRejection === 'invalid_word') return strings.errors.invalidWord;
-    return '';
-  }, [state.lastRejection, strings.errors]);
-
-  const explanation = useMemo(
-    () => getExplanation(theme, locale, state.targetNormalized),
-    [theme, locale, state.targetNormalized],
-  );
-
   const handleKey = (k: KeyValue) => {
     if (k === 'ENTER') submit();
     else if (k === 'BACK') removeLetter();
     else addLetter(k);
   };
 
-  const handleLanguagePress = () => {
-    const next: Locale = locale === 'pt' ? 'en' : 'pt';
-    const hasProgress =
-      state.guesses.length > 0 || state.currentGuess.length > 0;
-    if (state.phase === 'playing' && hasProgress) {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const confirmed = window.confirm(
-          `${strings.language.switchConfirm.title}\n\n${strings.language.switchConfirm.message}`,
-        );
-        if (confirmed) {
-          onChangeLocale(next);
-        }
-      } else {
-        Alert.alert(
-          strings.language.switchConfirm.title,
-          strings.language.switchConfirm.message,
-          [
-            { text: strings.language.switchConfirm.keep, style: 'cancel' },
-            {
-              text: strings.language.switchConfirm.discard,
-              style: 'destructive',
-              onPress: () => onChangeLocale(next),
-            },
-          ],
-        );
-      }
-    } else {
-      onChangeLocale(next);
-    }
+  const handleModeChange = (nextMode: GameMode) => {
+    setCurrentMode(nextMode);
+    reset(nextMode);
   };
 
-  const isEnd = state.phase === 'won' || state.phase === 'lost';
+  const handleTogglePlayType = (nextType: 'free' | 'daily') => {
+    setPlayType(nextType);
+    reset(currentMode);
+  };
 
-  // Aguarda hidratação do AsyncStorage antes de mostrar o board pra evitar
-  // sortear/marcar palavra na lista vazia (que viraria stale após carregar).
+  const errorMessage = useMemo(() => {
+    if (state.lastRejection === 'too_short') return 'Letras insuficientes';
+    if (state.lastRejection === 'invalid_word') return 'Palavra não encontrada';
+    return '';
+  }, [state.lastRejection]);
+
+  const isEnd = state.phase === 'won' || state.phase === 'lost';
+  const targetWords = state.boards.map((b) => b.targetNormalized);
+
+  // Calcula tamanho dos tiles conforme o modo e largura da tela
+  const tileSize = useMemo(() => {
+    if (currentMode === 'termo') {
+      return width < 380 ? 44 : 52;
+    }
+    if (currentMode === 'dueto') {
+      return width < 600 ? 34 : 44;
+    }
+    // quarteto
+    return width < 600 ? 28 : 38;
+  }, [currentMode, width]);
+
   if (!usedLoaded) {
     return (
-      <View style={[styles.loading, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[styles.loading, { backgroundColor: theme.colors.background }]}
+      >
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -178,24 +171,123 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
           opacity={theme.background?.opacity}
         />
       ) : null}
+
       <View style={styles.contentContainer}>
         <Header
-          title={strings.appTitle}
-          locale={locale}
-          onLanguagePress={handleLanguagePress}
+          currentMode={currentMode}
+          onSelectMode={handleModeChange}
+          playType={playType}
+          onTogglePlayType={handleTogglePlayType}
+          onNewGamePress={() => reset(currentMode)}
         />
+
         <Toast showKey={shakeKey} message={errorMessage} />
-        <View style={styles.boardArea}>
-          <Board
-            guesses={state.guesses}
-            currentGuess={state.currentGuess}
-            wordLength={state.config.wordLength}
-            maxAttempts={state.config.maxAttempts}
-            shakeKey={shakeKey}
+
+        <ScrollView
+          contentContainerStyle={styles.boardsScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {currentMode === 'termo' ? (
+            <View style={styles.singleBoardArea}>
+              <Board
+                guesses={state.boards[0].guesses}
+                currentGuess={state.currentGuess}
+                wordLength={state.config.wordLength}
+                maxAttempts={state.config.maxAttempts}
+                isSolved={state.boards[0].isSolved}
+                tileSize={tileSize}
+                shakeKey={shakeKey}
+              />
+            </View>
+          ) : currentMode === 'dueto' ? (
+            <View style={styles.duetoArea}>
+              <View style={styles.boardCol}>
+                <Board
+                  guesses={state.boards[0].guesses}
+                  currentGuess={state.currentGuess}
+                  wordLength={state.config.wordLength}
+                  maxAttempts={state.config.maxAttempts}
+                  isSolved={state.boards[0].isSolved}
+                  tileSize={tileSize}
+                  shakeKey={shakeKey}
+                />
+              </View>
+              <View style={styles.boardCol}>
+                <Board
+                  guesses={state.boards[1].guesses}
+                  currentGuess={state.currentGuess}
+                  wordLength={state.config.wordLength}
+                  maxAttempts={state.config.maxAttempts}
+                  isSolved={state.boards[1].isSolved}
+                  tileSize={tileSize}
+                  shakeKey={shakeKey}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.quartetoArea}>
+              <View style={styles.quartetoRow}>
+                <View style={styles.boardCol}>
+                  <Board
+                    guesses={state.boards[0].guesses}
+                    currentGuess={state.currentGuess}
+                    wordLength={state.config.wordLength}
+                    maxAttempts={state.config.maxAttempts}
+                    isSolved={state.boards[0].isSolved}
+                    tileSize={tileSize}
+                    shakeKey={shakeKey}
+                  />
+                </View>
+                <View style={styles.boardCol}>
+                  <Board
+                    guesses={state.boards[1].guesses}
+                    currentGuess={state.currentGuess}
+                    wordLength={state.config.wordLength}
+                    maxAttempts={state.config.maxAttempts}
+                    isSolved={state.boards[1].isSolved}
+                    tileSize={tileSize}
+                    shakeKey={shakeKey}
+                  />
+                </View>
+              </View>
+              <View style={styles.quartetoRow}>
+                <View style={styles.boardCol}>
+                  <Board
+                    guesses={state.boards[2].guesses}
+                    currentGuess={state.currentGuess}
+                    wordLength={state.config.wordLength}
+                    maxAttempts={state.config.maxAttempts}
+                    isSolved={state.boards[2].isSolved}
+                    tileSize={tileSize}
+                    shakeKey={shakeKey}
+                  />
+                </View>
+                <View style={styles.boardCol}>
+                  <Board
+                    guesses={state.boards[3].guesses}
+                    currentGuess={state.currentGuess}
+                    wordLength={state.config.wordLength}
+                    maxAttempts={state.config.maxAttempts}
+                    isSolved={state.boards[3].isSolved}
+                    tileSize={tileSize}
+                    shakeKey={shakeKey}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        <View
+          style={[
+            styles.keyboardArea,
+            { paddingBottom: theme.spacing.padding },
+          ]}
+        >
+          <Keyboard
+            letterBoardStates={state.letterBoardStates}
+            onPress={handleKey}
           />
-        </View>
-        <View style={[styles.keyboardArea, { paddingBottom: theme.spacing.padding }]}>
-          <Keyboard letterStates={state.letterStates} onPress={handleKey} />
         </View>
       </View>
 
@@ -203,19 +295,23 @@ export function GameScreen({ locale, onChangeLocale }: GameScreenProps) {
         <EndGameModal
           visible
           phase={state.phase === 'won' ? 'won' : 'lost'}
-          attempts={state.guesses.length}
-          targetWord={state.targetNormalized}
-          title={state.phase === 'won' ? strings.win.title : strings.lose.title}
+          attempts={state.attemptCount}
+          maxAttempts={state.config.maxAttempts}
+          targetWords={targetWords}
+          title={
+            state.phase === 'won' ? 'PARABÉNS! 🏆' : 'FIM DE JOGO 😢'
+          }
           message={
             state.phase === 'won'
-              ? interpolate(strings.win.message, { attempts: state.guesses.length })
-              : interpolate(strings.lose.message, { word: state.targetNormalized })
+              ? `Você acertou todas as palavras em ${state.attemptCount} tentativas!`
+              : 'Não foi dessa vez! Veja as respostas abaixo:'
           }
-          ctaLabel={strings.newGame}
-          explanation={explanation}
-          wordRevealLabel={state.targetNormalized}
-          onClose={reset}
-          onPlayAgain={reset}
+          ctaLabel={playType === 'daily' ? 'Jogar Modo Livre' : 'Jogar Novamente'}
+          onClose={() => reset(currentMode)}
+          onPlayAgain={() => {
+            if (playType === 'daily') setPlayType('free');
+            reset(currentMode);
+          }}
         />
       ) : null}
     </SafeAreaView>
@@ -229,13 +325,40 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 720,
     alignSelf: 'center',
   },
-  boardArea: {
-    flex: 1,
+  boardsScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 16,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  singleBoardArea: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  duetoArea: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 16,
+    flexWrap: 'wrap',
+  },
+  quartetoArea: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  quartetoRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  boardCol: {
+    alignItems: 'center',
   },
   keyboardArea: {
     paddingHorizontal: 4,

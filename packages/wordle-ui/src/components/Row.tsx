@@ -6,13 +6,19 @@ import { Tile } from './Tile';
 
 export interface RowProps {
   letters: ReadonlyArray<{ letter?: string; state: LetterState }>;
+  tileSize?: number;
   /** Triggers a horizontal shake animation when this value changes truthy. */
   shakeKey?: number;
   /** Stagger interval (ms) for the per-tile reveal flip. */
   revealStagger?: number;
 }
 
-export function Row({ letters, shakeKey, revealStagger = 250 }: RowProps) {
+export function Row({
+  letters,
+  tileSize,
+  shakeKey,
+  revealStagger = 250,
+}: RowProps) {
   const theme = useTheme();
   const shake = useRef(new Animated.Value(0)).current;
 
@@ -20,11 +26,31 @@ export function Row({ letters, shakeKey, revealStagger = 250 }: RowProps) {
     if (!shakeKey) return;
     const intensity = theme.animations?.shakeIntensity ?? 8;
     Animated.sequence([
-      Animated.timing(shake, { toValue: -intensity, duration: 50, useNativeDriver: true }),
-      Animated.timing(shake, { toValue: intensity, duration: 50, useNativeDriver: true }),
-      Animated.timing(shake, { toValue: -intensity, duration: 50, useNativeDriver: true }),
-      Animated.timing(shake, { toValue: intensity, duration: 50, useNativeDriver: true }),
-      Animated.timing(shake, { toValue: 0, duration: 50, useNativeDriver: true }),
+      Animated.timing(shake, {
+        toValue: -intensity,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shake, {
+        toValue: intensity,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shake, {
+        toValue: -intensity,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shake, {
+        toValue: intensity,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shake, {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, [shakeKey, shake, theme.animations?.shakeIntensity]);
 
@@ -40,6 +66,7 @@ export function Row({ letters, shakeKey, revealStagger = 250 }: RowProps) {
           key={i}
           letter={cell.letter}
           state={cell.state}
+          size={tileSize}
           revealDelay={i * revealStagger}
         />
       ))}

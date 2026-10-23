@@ -9,24 +9,36 @@ const ROWS: ReadonlyArray<ReadonlyArray<KeyValue>> = [
 ];
 
 export interface KeyboardProps {
-  letterStates: Record<string, LetterState>;
+  letterStates?: Record<string, LetterState>;
+  letterBoardStates?: Record<string, LetterState[]>;
   onPress: (value: KeyValue) => void;
 }
 
-export function Keyboard({ letterStates, onPress }: KeyboardProps) {
+export function Keyboard({
+  letterStates,
+  letterBoardStates,
+  onPress,
+}: KeyboardProps) {
   return (
     <View style={styles.container}>
       {ROWS.map((row, rowIdx) => (
         <View key={rowIdx} style={styles.row}>
           {row.map((value) => {
             const state =
-              value === 'ENTER' || value === 'BACK' ? 'empty' : letterStates[value] ?? 'empty';
+              value === 'ENTER' || value === 'BACK'
+                ? 'empty'
+                : letterStates?.[value] ?? 'empty';
+            const boardStates =
+              value === 'ENTER' || value === 'BACK'
+                ? undefined
+                : letterBoardStates?.[value];
             const flex = value === 'ENTER' || value === 'BACK' ? 1.5 : 1;
             return (
               <Key
                 key={value}
                 value={value}
                 state={state}
+                boardStates={boardStates}
                 onPress={onPress}
                 flex={flex}
               />

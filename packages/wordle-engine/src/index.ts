@@ -18,3 +18,17 @@ export {
   DEFAULT_MAX_ATTEMPTS,
   makeConfig,
 } from './config';
+
+export type {
+  GameMode,
+  BoardState,
+  MultiEngineConfig,
+  MultiGamePhase,
+  MultiGameState,
+  MultiAction,
+} from './multi/types';
+export {
+  MODE_CONFIG,
+  initialMultiState,
+  multiReducer,
+} from './multi/reducer';

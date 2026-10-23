@@ -1,31 +1,29 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { GamePhase } from 'wordle-engine';
+import type { MultiGamePhase } from 'wordle-engine';
 import { useTheme } from '../ThemeProvider';
 
 export interface EndGameModalProps {
   visible: boolean;
-  phase: Extract<GamePhase, 'won' | 'lost'>;
+  phase: Extract<MultiGamePhase, 'won' | 'lost'>;
   attempts: number;
-  targetWord: string;
+  maxAttempts?: number;
+  targetWords: string[];
   title: string;
   message: string;
   ctaLabel: string;
-  /** Texto curto explicando o que a palavra significa (opcional). */
-  explanation?: string | null;
-  /** Label "A palavra era:" mostrada acima do reveal. */
-  wordRevealLabel?: string;
   onClose: () => void;
   onPlayAgain: () => void;
 }
 
 export function EndGameModal({
   visible,
-  targetWord,
+  phase,
+  attempts,
+  maxAttempts,
+  targetWords,
   title,
   message,
   ctaLabel,
-  explanation,
-  wordRevealLabel,
   onClose,
   onPlayAgain,
 }: EndGameModalProps) {
@@ -42,7 +40,10 @@ export function EndGameModal({
         accessibilityRole="button"
         accessibilityLabel="Fechar"
         onPress={onClose}
-        style={[styles.backdrop, { backgroundColor: theme.colors.modal.backdrop }]}
+        style={[
+          styles.backdrop,
+          { backgroundColor: theme.colors.modal.backdrop },
+        ]}
       >
         <Pressable
           onPress={(e) => e.stopPropagation()}
@@ -72,50 +73,64 @@ export function EndGameModal({
               fontSize: theme.typography.sizes.body,
               color: theme.colors.textMuted,
               textAlign: 'center',
-              marginBottom: explanation ? 16 : 24,
+              marginBottom: 16,
             }}
           >
             {message}
           </Text>
 
-          {explanation ? (
-            <View
-              style={[
-                styles.explainBox,
-                { backgroundColor: theme.colors.surface, marginBottom: 20 },
-              ]}
+          {/* Palavras reveladas */}
+          <View
+            style={[
+              styles.wordsBox,
+              { backgroundColor: theme.colors.surface, marginBottom: 20 },
+            ]}
+          >
+            <Text
+              style={{
+                fontSize: theme.typography.sizes.body - 2,
+                color: theme.colors.textMuted,
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+                marginBottom: 8,
+                textAlign: 'center',
+              }}
             >
-              <Text
-                style={{
-                  fontSize: theme.typography.sizes.body - 2,
-                  color: theme.colors.textMuted,
-                  fontWeight: '600',
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
-                  marginBottom: 4,
-                }}
-              >
-                {wordRevealLabel ?? targetWord.toUpperCase()}
-              </Text>
-              <Text
-                style={{
-                  fontSize: theme.typography.sizes.body,
-                  color: theme.colors.text,
-                  textAlign: 'left',
-                  lineHeight: theme.typography.sizes.body * 1.4,
-                }}
-              >
-                {explanation}
-              </Text>
+              {targetWords.length > 1
+                ? 'Palavras corretas:'
+                : 'Palavra correta:'}
+            </Text>
+            <View style={styles.targetList}>
+              {targetWords.map((word, idx) => (
+                <View key={idx} style={styles.targetBadge}>
+                  <Text
+                    style={{
+                      fontSize: theme.typography.sizes.body + 2,
+                      fontWeight: '800',
+                      letterSpacing: 2,
+                      color:
+                        phase === 'won'
+                          ? theme.colors.tile.correct
+                          : theme.colors.tile.absent,
+                    }}
+                  >
+                    {word.toUpperCase()}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ) : null}
+          </View>
 
           <Pressable
             accessibilityRole="button"
             onPress={onPlayAgain}
             style={({ pressed }) => [
               styles.cta,
-              { backgroundColor: theme.colors.primary, opacity: pressed ? 0.8 : 1 },
+              {
+                backgroundColor: theme.colors.primary,
+                opacity: pressed ? 0.8 : 1,
+              },
             ]}
           >
             <Text
@@ -143,7 +158,7 @@ const styles = StyleSheet.create({
   },
   surface: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 380,
     borderRadius: 12,
     elevation: 8,
     shadowColor: '#000',
@@ -151,9 +166,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  explainBox: {
+  wordsBox: {
     padding: 12,
     borderRadius: 8,
+  },
+  targetList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  targetBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
   cta: {
     paddingVertical: 14,
