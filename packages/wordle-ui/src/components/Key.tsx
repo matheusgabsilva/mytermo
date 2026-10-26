@@ -26,9 +26,13 @@ export function Key({
 
   const isSpecial = value === 'ENTER' || value === 'BACK';
   const display =
-    label ?? (value === 'BACK' ? '⌫' : value === 'ENTER' ? '↵' : value);
+    label ?? (value === 'BACK' ? '⌫' : value === 'ENTER' ? 'ENTER' : value);
 
-  // Se boardStates for fornecido e tiver múltiplos tabuleiros
+  // Se boardStates for fornecido com 1 elemento, usa-o para o estado da tecla
+  const singleState =
+    boardStates && boardStates.length === 1 ? boardStates[0] : state;
+
+  // Se boardStates for fornecido e tiver múltiplos tabuleiros (Dueto: 2, Quarteto: 4)
   const hasMultiBoards =
     !isSpecial && boardStates && boardStates.length > 1;
 
@@ -43,11 +47,16 @@ export function Key({
   const hasFilled =
     hasMultiBoards
       ? boardStates!.some((s) => s === 'correct' || s === 'present' || s === 'absent')
-      : state === 'correct' || state === 'present' || state === 'absent';
+      : singleState === 'correct' || singleState === 'present' || singleState === 'absent';
 
   const textColor = hasFilled
     ? theme.colors.key.textOnFilled
     : theme.colors.key.text;
+
+  const fontSize =
+    value === 'ENTER'
+      ? 12
+      : theme.typography.sizes.key;
 
   return (
     <Pressable
@@ -60,14 +69,14 @@ export function Key({
           flex,
           backgroundColor: hasMultiBoards
             ? theme.colors.key.default
-            : getColorForState(state),
+            : getColorForState(singleState),
           opacity: pressed ? 0.7 : 1,
         },
       ]}
     >
       {/* Background particionado para multi-boards (Dueto: split vertical / Quarteto: 4 quadrantes) */}
       {hasMultiBoards && boardStates!.length === 2 ? (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <View style={styles.partitionContainer} pointerEvents="none">
           <View style={styles.splitRow}>
             <View
               style={[
@@ -84,7 +93,7 @@ export function Key({
           </View>
         </View>
       ) : hasMultiBoards && boardStates!.length === 4 ? (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <View style={styles.partitionContainer} pointerEvents="none">
           <View style={styles.quadrantRow}>
             <View
               style={[
@@ -120,7 +129,7 @@ export function Key({
         <Text
           style={{
             color: textColor,
-            fontSize: theme.typography.sizes.key,
+            fontSize,
             fontFamily: theme.typography.fontFamily.bold,
             fontWeight: '700',
           }}
@@ -145,18 +154,29 @@ const styles = StyleSheet.create({
   textWrapper: {
     zIndex: 2,
   },
+  partitionContainer: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
   splitRow: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     flexDirection: 'row',
   },
   splitHalf: {
     flex: 1,
+    height: '100%',
   },
   quadrantRow: {
     flex: 1,
+    width: '100%',
+    height: '50%',
     flexDirection: 'row',
   },
   quadrantCell: {
     flex: 1,
+    height: '100%',
   },
 });

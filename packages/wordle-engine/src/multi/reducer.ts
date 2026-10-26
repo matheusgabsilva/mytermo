@@ -116,9 +116,10 @@ export function multiReducer(
       if (state.currentGuess.length !== state.config.wordLength) {
         return { ...state, lastRejection: 'too_short' };
       }
+      const normalizedGuess = normalize(state.currentGuess);
       if (
         state.config.isValidGuess &&
-        !state.config.isValidGuess(state.currentGuess)
+        !state.config.isValidGuess(normalizedGuess)
       ) {
         return { ...state, lastRejection: 'invalid_word' };
       }

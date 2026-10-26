@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import type { LetterState } from 'wordle-engine';
 import { useTheme } from '../ThemeProvider';
 import { Tile } from './Tile';
@@ -29,27 +29,27 @@ export function Row({
       Animated.timing(shake, {
         toValue: -intensity,
         duration: 50,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(shake, {
         toValue: intensity,
         duration: 50,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(shake, {
         toValue: -intensity,
         duration: 50,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(shake, {
         toValue: intensity,
         duration: 50,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(shake, {
         toValue: 0,
         duration: 50,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   }, [shakeKey, shake, theme.animations?.shakeIntensity]);

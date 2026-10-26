@@ -27,7 +27,7 @@ export function Keyboard({
             const state =
               value === 'ENTER' || value === 'BACK'
                 ? 'empty'
-                : letterStates?.[value] ?? 'empty';
+                : letterStates?.[value] ?? letterBoardStates?.[value]?.[0] ?? 'empty';
             const boardStates =
               value === 'ENTER' || value === 'BACK'
                 ? undefined

@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { GameMode } from 'wordle-engine';
+import type { GameMode, LetterState } from 'wordle-engine';
 import {
   BackgroundImage,
   Board,
@@ -64,7 +64,10 @@ export function GameScreen() {
   const config = useMemo(
     () => ({
       wordLength: 5,
-      isValidGuess: (g: string) => validSet.has(g),
+      isValidGuess: (g: string) => {
+        const norm = g.trim().toUpperCase();
+        return validSet.has(norm);
+      },
     }),
     [validSet],
   );
@@ -93,14 +96,15 @@ export function GameScreen() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const isEnter = e.key === 'Enter' || e.key === 'NumpadEnter';
       if (state.phase === 'won' || state.phase === 'lost') {
-        if (e.key === 'Enter') {
+        if (isEnter) {
           e.preventDefault();
           reset();
         }
         return;
       }
-      if (e.key === 'Enter') {
+      if (isEnter) {
         e.preventDefault();
         submit();
       } else if (e.key === 'Backspace') {
@@ -152,6 +156,14 @@ export function GameScreen() {
     // quarteto
     return width < 600 ? 28 : 38;
   }, [currentMode, width]);
+
+  const singleLetterStates = useMemo(() => {
+    const res: Record<string, LetterState> = {};
+    for (const [letter, states] of Object.entries(state.letterBoardStates)) {
+      if (states[0]) res[letter] = states[0];
+    }
+    return res;
+  }, [state.letterBoardStates]);
 
   if (!usedLoaded) {
     return (
@@ -304,6 +316,7 @@ export function GameScreen() {
           ]}
         >
           <Keyboard
+            letterStates={singleLetterStates}
             letterBoardStates={state.letterBoardStates}
             onPress={handleKey}
           />

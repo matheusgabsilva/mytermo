@@ -86,4 +86,37 @@ describe('MultiEngine', () => {
     expect(s.config.numBoards).toBe(1);
     expect(s.config.maxAttempts).toBe(6);
   });
+
+  it('evaluates submitted guess with isValidGuess and updates letter states', () => {
+    const validSet = new Set(['TERMO', 'LIVRO', 'CASAS', 'PORTA']);
+    let s = initialMultiState(['TERMO', 'LIVRO'], 'dueto', {
+      wordLength: 5,
+      isValidGuess: (g: string) => validSet.has(g),
+    });
+
+    // Type CASAS
+    for (const char of 'CASAS') {
+      s = multiReducer(s, { type: 'ADD_LETTER', letter: char });
+    }
+    expect(s.currentGuess).toBe('CASAS');
+
+    // Submit
+    s = multiReducer(s, { type: 'SUBMIT' });
+
+    expect(s.attemptCount).toBe(1);
+    expect(s.currentGuess).toBe('');
+    expect(s.lastRejection).toBeNull();
+    expect(s.boards[0]?.guesses.length).toBe(1);
+    expect(s.boards[1]?.guesses.length).toBe(1);
+
+    // Board 0 target is TERMO vs guess CASAS
+    // C absent, A absent, S absent, A absent, S absent
+    expect(s.boards[0]?.guesses[0]?.map((g) => g.state)).toEqual([
+      'absent',
+      'absent',
+      'absent',
+      'absent',
+      'absent',
+    ]);
+  });
 });

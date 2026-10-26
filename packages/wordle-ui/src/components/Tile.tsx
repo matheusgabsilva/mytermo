@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import type { LetterState } from 'wordle-engine';
 import { useTheme } from '../ThemeProvider';
 
@@ -19,7 +19,6 @@ export function Tile({ letter, state, size = 54, revealDelay = 0 }: TileProps) {
   const pop = useRef(new Animated.Value(1)).current;
 
   const isRevealed = REVEALED_STATES.includes(state);
-  const isFilled = state === 'edited' || isRevealed;
 
   useEffect(() => {
     if (isRevealed) {
@@ -29,7 +28,7 @@ export function Tile({ letter, state, size = 54, revealDelay = 0 }: TileProps) {
         Animated.timing(flip, {
           toValue: 1,
           duration: theme.animations?.flipDuration ?? 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
     } else {
@@ -44,7 +43,7 @@ export function Tile({ letter, state, size = 54, revealDelay = 0 }: TileProps) {
         toValue: 1,
         friction: 4,
         tension: 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }
   }, [letter, state, pop]);

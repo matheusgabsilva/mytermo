@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { Animated, Platform, StyleSheet, Text } from 'react-native';
 import { useTheme } from '../ThemeProvider';
 
 export interface ToastProps {
@@ -31,12 +31,10 @@ export function Toast({ showKey, message, duration = 1500, topOffset = 80 }: Toa
       Animated.timing(opacity, {
         toValue: 0,
         duration: 250,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }, duration);
     return () => clearTimeout(timer);
-    // capturedMessage is intentionally not a dep: only re-trigger on showKey
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showKey]);
 
   if (!showKey) return null;
