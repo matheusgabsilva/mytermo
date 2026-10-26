@@ -27,11 +27,14 @@ import {
   pickMultipleWords,
 } from '../services/multiWordPicker';
 
+export interface GameScreenProps {}
+
 export function GameScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const [currentMode, setCurrentMode] = useState<GameMode>('termo');
   const [playType, setPlayType] = useState<'free' | 'daily'>('free');
+  const playTypeRef = useRef(playType);
+  playTypeRef.current = playType;
 
   const wordList = theme.wordList.pt;
   const validSet = useMemo(() => {
@@ -50,12 +53,12 @@ export function GameScreen() {
   const pickTargetsForMode = useCallback(
     (mode: GameMode): string[] => {
       const count = mode === 'quarteto' ? 4 : mode === 'dueto' ? 2 : 1;
-      if (playType === 'daily') {
+      if (playTypeRef.current === 'daily') {
         return pickDailyWords(wordList, count, mode);
       }
       return pickMultipleWords(wordList, count, usedRef.current);
     },
-    [wordList, playType],
+    [wordList],
   );
 
   const config = useMemo(
@@ -68,16 +71,18 @@ export function GameScreen() {
 
   const { state, shakeKey, addLetter, removeLetter, submit, reset } =
     useMultiGame({
-      mode: currentMode,
+      mode: 'termo',
       pickTargets: pickTargetsForMode,
       config,
     });
+
+  const currentMode = state.mode;
 
   // Marca palavras como usadas no modo livre
   useEffect(() => {
     if (playType === 'free') {
       state.boards.forEach((b) => {
-        if (b.targetNormalized) markUsed(b.targetNormalized);
+        if (b?.targetNormalized) markUsed(b.targetNormalized);
       });
     }
   }, [state.boards, markUsed, playType]);
@@ -118,13 +123,13 @@ export function GameScreen() {
   };
 
   const handleModeChange = (nextMode: GameMode) => {
-    setCurrentMode(nextMode);
     reset(nextMode);
   };
 
   const handleTogglePlayType = (nextType: 'free' | 'daily') => {
+    playTypeRef.current = nextType;
     setPlayType(nextType);
-    reset(currentMode);
+    reset(state.mode);
   };
 
   const errorMessage = useMemo(() => {
@@ -134,7 +139,7 @@ export function GameScreen() {
   }, [state.lastRejection]);
 
   const isEnd = state.phase === 'won' || state.phase === 'lost';
-  const targetWords = state.boards.map((b) => b.targetNormalized);
+  const targetWords = state.boards.map((b) => b?.targetNormalized ?? '');
 
   // Calcula tamanho dos tiles conforme o modo e largura da tela
   const tileSize = useMemo(() => {
@@ -189,19 +194,7 @@ export function GameScreen() {
         >
           {currentMode === 'termo' ? (
             <View style={styles.singleBoardArea}>
-              <Board
-                guesses={state.boards[0].guesses}
-                currentGuess={state.currentGuess}
-                wordLength={state.config.wordLength}
-                maxAttempts={state.config.maxAttempts}
-                isSolved={state.boards[0].isSolved}
-                tileSize={tileSize}
-                shakeKey={shakeKey}
-              />
-            </View>
-          ) : currentMode === 'dueto' ? (
-            <View style={styles.duetoArea}>
-              <View style={styles.boardCol}>
+              {state.boards[0] && (
                 <Board
                   guesses={state.boards[0].guesses}
                   currentGuess={state.currentGuess}
@@ -211,22 +204,11 @@ export function GameScreen() {
                   tileSize={tileSize}
                   shakeKey={shakeKey}
                 />
-              </View>
-              <View style={styles.boardCol}>
-                <Board
-                  guesses={state.boards[1].guesses}
-                  currentGuess={state.currentGuess}
-                  wordLength={state.config.wordLength}
-                  maxAttempts={state.config.maxAttempts}
-                  isSolved={state.boards[1].isSolved}
-                  tileSize={tileSize}
-                  shakeKey={shakeKey}
-                />
-              </View>
+              )}
             </View>
-          ) : (
-            <View style={styles.quartetoArea}>
-              <View style={styles.quartetoRow}>
+          ) : currentMode === 'dueto' ? (
+            <View style={styles.duetoArea}>
+              {state.boards[0] && (
                 <View style={styles.boardCol}>
                   <Board
                     guesses={state.boards[0].guesses}
@@ -238,6 +220,8 @@ export function GameScreen() {
                     shakeKey={shakeKey}
                   />
                 </View>
+              )}
+              {state.boards[1] && (
                 <View style={styles.boardCol}>
                   <Board
                     guesses={state.boards[1].guesses}
@@ -249,30 +233,65 @@ export function GameScreen() {
                     shakeKey={shakeKey}
                   />
                 </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.quartetoArea}>
+              <View style={styles.quartetoRow}>
+                {state.boards[0] && (
+                  <View style={styles.boardCol}>
+                    <Board
+                      guesses={state.boards[0].guesses}
+                      currentGuess={state.currentGuess}
+                      wordLength={state.config.wordLength}
+                      maxAttempts={state.config.maxAttempts}
+                      isSolved={state.boards[0].isSolved}
+                      tileSize={tileSize}
+                      shakeKey={shakeKey}
+                    />
+                  </View>
+                )}
+                {state.boards[1] && (
+                  <View style={styles.boardCol}>
+                    <Board
+                      guesses={state.boards[1].guesses}
+                      currentGuess={state.currentGuess}
+                      wordLength={state.config.wordLength}
+                      maxAttempts={state.config.maxAttempts}
+                      isSolved={state.boards[1].isSolved}
+                      tileSize={tileSize}
+                      shakeKey={shakeKey}
+                    />
+                  </View>
+                )}
               </View>
               <View style={styles.quartetoRow}>
-                <View style={styles.boardCol}>
-                  <Board
-                    guesses={state.boards[2].guesses}
-                    currentGuess={state.currentGuess}
-                    wordLength={state.config.wordLength}
-                    maxAttempts={state.config.maxAttempts}
-                    isSolved={state.boards[2].isSolved}
-                    tileSize={tileSize}
-                    shakeKey={shakeKey}
-                  />
-                </View>
-                <View style={styles.boardCol}>
-                  <Board
-                    guesses={state.boards[3].guesses}
-                    currentGuess={state.currentGuess}
-                    wordLength={state.config.wordLength}
-                    maxAttempts={state.config.maxAttempts}
-                    isSolved={state.boards[3].isSolved}
-                    tileSize={tileSize}
-                    shakeKey={shakeKey}
-                  />
-                </View>
+                {state.boards[2] && (
+                  <View style={styles.boardCol}>
+                    <Board
+                      guesses={state.boards[2].guesses}
+                      currentGuess={state.currentGuess}
+                      wordLength={state.config.wordLength}
+                      maxAttempts={state.config.maxAttempts}
+                      isSolved={state.boards[2].isSolved}
+                      tileSize={tileSize}
+                      shakeKey={shakeKey}
+                    />
+                  </View>
+                )}
+                {state.boards[3] && (
+                  <View style={styles.boardCol}>
+                    <Board
+                      guesses={state.boards[3].guesses}
+                      currentGuess={state.currentGuess}
+                      wordLength={state.config.wordLength}
+                      maxAttempts={state.config.maxAttempts}
+                      isSolved={state.boards[3].isSolved}
+                      tileSize={tileSize}
+                      shakeKey={shakeKey}
+                    />
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -309,7 +328,10 @@ export function GameScreen() {
           ctaLabel={playType === 'daily' ? 'Jogar Modo Livre' : 'Jogar Novamente'}
           onClose={() => reset(currentMode)}
           onPlayAgain={() => {
-            if (playType === 'daily') setPlayType('free');
+            if (playType === 'daily') {
+              playTypeRef.current = 'free';
+              setPlayType('free');
+            }
             reset(currentMode);
           }}
         />

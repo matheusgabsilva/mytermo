@@ -81,7 +81,10 @@ export function multiReducer(
 ): MultiGameState {
   if (action.type === 'RESET') {
     const nextMode = action.mode ?? state.mode;
-    return initialMultiState(action.targets, nextMode, state.config);
+    return initialMultiState(action.targets, nextMode, {
+      wordLength: state.config.wordLength,
+      isValidGuess: state.config.isValidGuess,
+    });
   }
 
   if (state.phase !== 'playing') {
@@ -187,7 +190,7 @@ function updateBoardLetterStates(
     if (!map[letter]) {
       map[letter] = Array.from({ length: totalBoards }, () => 'empty' as LetterState);
     }
-    const current = map[letter][boardIdx];
+    const current = map[letter][boardIdx] ?? 'empty';
     if (STATE_PRIORITY[state] > STATE_PRIORITY[current]) {
       map[letter][boardIdx] = state;
     }

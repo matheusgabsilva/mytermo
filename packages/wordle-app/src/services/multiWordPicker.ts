@@ -53,7 +53,10 @@ export function pickDailyWords(
 
   for (let i = 0; i < count && pool.length > 0; i++) {
     const idx = Math.floor(rng() * pool.length);
-    chosen.push(pool[idx]);
+    const word = pool[idx];
+    if (word) {
+      chosen.push(word);
+    }
     pool.splice(idx, 1);
   }
 
@@ -80,7 +83,10 @@ export function pickMultipleWords(
 
   for (let i = 0; i < count && pool.length > 0; i++) {
     const idx = Math.floor(Math.random() * pool.length);
-    chosen.push(pool[idx]);
+    const word = pool[idx];
+    if (word) {
+      chosen.push(word);
+    }
     pool.splice(idx, 1);
   }
 

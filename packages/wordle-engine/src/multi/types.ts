@@ -1,4 +1,4 @@
-import type { EvaluatedLetter, LetterState } from './types';
+import type { EvaluatedLetter, LetterState } from '../state/types';
 
 export type GameMode = 'termo' | 'dueto' | 'quarteto';
 

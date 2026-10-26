@@ -81,7 +81,7 @@ export function Tile({ letter, state, size = 54, revealDelay = 0 }: TileProps) {
     >
       <Text
         style={{
-          fontSize: theme.typography.sizes.tile,
+          fontSize: size ? Math.round(size * 0.58) : theme.typography.sizes.tile,
           color: textColor,
           fontFamily: theme.typography.fontFamily.bold,
           fontWeight: '700',
