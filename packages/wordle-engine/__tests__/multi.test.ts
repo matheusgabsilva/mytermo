@@ -119,4 +119,48 @@ describe('MultiEngine', () => {
       'absent',
     ]);
   });
+
+  it('handles reset to dueto and quarteto then submitting guesses', () => {
+    const validSet = new Set(['TERMO', 'LIVRO', 'CASAS', 'PORTA', 'CANOA', 'AVIAO', 'PRETO', 'CAUTO', 'ANDOU', 'ADURO']);
+    let s = initialMultiState(['TERMO'], 'termo', {
+      wordLength: 5,
+      isValidGuess: (g: string) => validSet.has(g),
+    });
+
+    // Reset to dueto
+    s = multiReducer(s, {
+      type: 'RESET',
+      targets: ['CANOA', 'AVIAO'],
+      mode: 'dueto',
+    });
+    expect(s.mode).toBe('dueto');
+    expect(s.boards.length).toBe(2);
+
+    for (const char of 'CASAS') {
+      s = multiReducer(s, { type: 'ADD_LETTER', letter: char });
+    }
+    s = multiReducer(s, { type: 'SUBMIT' });
+    expect(s.attemptCount).toBe(1);
+    expect(s.boards[0]?.guesses.length).toBe(1);
+    expect(s.boards[1]?.guesses.length).toBe(1);
+
+    // Reset to quarteto
+    s = multiReducer(s, {
+      type: 'RESET',
+      targets: ['PRETO', 'CAUTO', 'ANDOU', 'ADURO'],
+      mode: 'quarteto',
+    });
+    expect(s.mode).toBe('quarteto');
+    expect(s.boards.length).toBe(4);
+
+    for (const char of 'CASAS') {
+      s = multiReducer(s, { type: 'ADD_LETTER', letter: char });
+    }
+    s = multiReducer(s, { type: 'SUBMIT' });
+    expect(s.attemptCount).toBe(1);
+    expect(s.boards[0]?.guesses.length).toBe(1);
+    expect(s.boards[1]?.guesses.length).toBe(1);
+    expect(s.boards[2]?.guesses.length).toBe(1);
+    expect(s.boards[3]?.guesses.length).toBe(1);
+  });
 });

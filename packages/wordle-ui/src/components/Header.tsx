@@ -37,30 +37,48 @@ export function Header({
         },
       ]}
     >
-      {/* Botão de Modo Livre vs Diário */}
+      {/* Seletor Diário vs Livre */}
       <View style={styles.leftSection}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onTogglePlayType(playType === 'daily' ? 'free' : 'daily')}
-          style={({ pressed }) => [
-            styles.typeToggle,
-            {
-              borderColor: theme.colors.border,
-              backgroundColor: playType === 'daily' ? theme.colors.surface : 'transparent',
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: '700',
-              color: playType === 'daily' ? theme.colors.primary : theme.colors.textMuted,
-            }}
+        <View style={[styles.segmentedContainer, { borderColor: theme.colors.border }]}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onTogglePlayType('daily')}
+            style={({ pressed }) => [
+              styles.segmentBtn,
+              playType === 'daily' && { backgroundColor: theme.colors.primary },
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
           >
-            {playType === 'daily' ? '📅 DIÁRIO' : '♾️ LIVRE'}
-          </Text>
-        </Pressable>
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                color: playType === 'daily' ? '#FFFFFF' : theme.colors.textMuted,
+              }}
+            >
+              📅 DIÁRIO
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onTogglePlayType('free')}
+            style={({ pressed }) => [
+              styles.segmentBtn,
+              playType === 'free' && { backgroundColor: theme.colors.primary },
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: '700',
+                color: playType === 'free' ? '#FFFFFF' : theme.colors.textMuted,
+              }}
+            >
+              ♾️ LIVRE
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Seletor de Modos (TERMO / DUETO / QUARTETO) */}
@@ -130,12 +148,21 @@ const styles = StyleSheet.create({
     minWidth: 70,
     justifyContent: 'center',
   },
-  typeToggle: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
+  segmentedContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+    padding: 2,
+    gap: 2,
+  },
+  segmentBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centerSection: {
     flexDirection: 'row',

@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { GameMode, LetterState } from 'wordle-engine';
+import { normalize, type GameMode, type LetterState } from 'wordle-engine';
 import {
   BackgroundImage,
   Board,
@@ -32,7 +32,7 @@ export interface GameScreenProps {}
 export function GameScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const [playType, setPlayType] = useState<'free' | 'daily'>('free');
+  const [playType, setPlayType] = useState<'free' | 'daily'>('daily');
   const playTypeRef = useRef(playType);
   playTypeRef.current = playType;
 
@@ -50,10 +50,10 @@ export function GameScreen() {
   const usedRef = useRef(used);
   usedRef.current = used;
 
-  const pickTargetsForMode = useCallback(
-    (mode: GameMode): string[] => {
+  const getTargets = useCallback(
+    (mode: GameMode, type: 'free' | 'daily'): string[] => {
       const count = mode === 'quarteto' ? 4 : mode === 'dueto' ? 2 : 1;
-      if (playTypeRef.current === 'daily') {
+      if (type === 'daily') {
         return pickDailyWords(wordList, count, mode);
       }
       return pickMultipleWords(wordList, count, usedRef.current);
@@ -61,11 +61,16 @@ export function GameScreen() {
     [wordList],
   );
 
+  const pickTargetsForMode = useCallback(
+    (mode: GameMode): string[] => getTargets(mode, playTypeRef.current),
+    [getTargets],
+  );
+
   const config = useMemo(
     () => ({
       wordLength: 5,
       isValidGuess: (g: string) => {
-        const norm = g.trim().toUpperCase();
+        const norm = normalize(g.trim());
         return validSet.has(norm);
       },
     }),
@@ -127,13 +132,20 @@ export function GameScreen() {
   };
 
   const handleModeChange = (nextMode: GameMode) => {
-    reset(nextMode);
+    const targets = getTargets(nextMode, playTypeRef.current);
+    reset(nextMode, targets);
   };
 
   const handleTogglePlayType = (nextType: 'free' | 'daily') => {
     playTypeRef.current = nextType;
     setPlayType(nextType);
-    reset(state.mode);
+    const targets = getTargets(currentMode, nextType);
+    reset(currentMode, targets);
+  };
+
+  const handleNewGame = () => {
+    const targets = getTargets(currentMode, playTypeRef.current);
+    reset(currentMode, targets);
   };
 
   const errorMessage = useMemo(() => {
@@ -195,7 +207,7 @@ export function GameScreen() {
           onSelectMode={handleModeChange}
           playType={playType}
           onTogglePlayType={handleTogglePlayType}
-          onNewGamePress={() => reset(currentMode)}
+          onNewGamePress={handleNewGame}
         />
 
         <Toast showKey={shakeKey} message={errorMessage} />
@@ -339,13 +351,13 @@ export function GameScreen() {
               : 'Não foi dessa vez! Veja as respostas abaixo:'
           }
           ctaLabel={playType === 'daily' ? 'Jogar Modo Livre' : 'Jogar Novamente'}
-          onClose={() => reset(currentMode)}
+          onClose={handleNewGame}
           onPlayAgain={() => {
             if (playType === 'daily') {
-              playTypeRef.current = 'free';
-              setPlayType('free');
+              handleTogglePlayType('free');
+            } else {
+              handleNewGame();
             }
-            reset(currentMode);
           }}
         />
       ) : null}

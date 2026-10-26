@@ -190,6 +190,8 @@ function updateBoardLetterStates(
   for (const { letter, state } of evaluation) {
     if (!map[letter]) {
       map[letter] = Array.from({ length: totalBoards }, () => 'empty' as LetterState);
+    } else {
+      map[letter] = [...map[letter]];
     }
     const current = map[letter][boardIdx] ?? 'empty';
     if (STATE_PRIORITY[state] > STATE_PRIORITY[current]) {

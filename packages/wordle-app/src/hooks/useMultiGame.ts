@@ -19,7 +19,7 @@ export interface UseMultiGameResult {
   addLetter: (letter: string) => void;
   removeLetter: () => void;
   submit: () => void;
-  reset: (nextMode?: GameMode) => void;
+  reset: (nextMode?: GameMode, customTargets?: string[]) => void;
 }
 
 export function useMultiGame({
@@ -54,11 +54,12 @@ export function useMultiGame({
   );
   const submit = useCallback(() => dispatch({ type: 'SUBMIT' }), []);
   const reset = useCallback(
-    (nextMode?: GameMode) => {
+    (nextMode?: GameMode, customTargets?: string[]) => {
       const targetMode = nextMode ?? state.mode;
+      const targets = customTargets ?? pickRef.current(targetMode);
       dispatch({
         type: 'RESET',
-        targets: pickRef.current(targetMode),
+        targets,
         mode: targetMode,
       });
     },

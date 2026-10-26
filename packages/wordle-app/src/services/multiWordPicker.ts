@@ -4,14 +4,21 @@ import { selectRandomWord } from 'wordle-engine';
  * Retorna uma seed diária (YYYYMMDD) baseada na data atual no fuso de Brasília (UTC-3).
  */
 export function getDailyKey(): string {
-  const now = new Date();
-  // Ajuste para horário de Brasília (UTC-3)
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const brasiliaTime = new Date(utc - 3 * 3600000);
-  const yyyy = brasiliaTime.getFullYear();
-  const mm = String(brasiliaTime.getMonth() + 1).padStart(2, '0');
-  const dd = String(brasiliaTime.getDate()).padStart(2, '0');
-  return `${yyyy}${mm}${dd}`;
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(new Date()).replace(/-/g, '');
+  } catch {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    return `${yyyy}${mm}${dd}`;
+  }
 }
 
 /**
