@@ -165,8 +165,11 @@ export function GameScreen() {
     if (currentMode === 'dueto') {
       return width < 600 ? 34 : 44;
     }
-    // quarteto
-    return width < 600 ? 28 : 38;
+    // quarteto (4 em linha)
+    if (width < 500) return 24;
+    if (width < 750) return 26;
+    if (width < 950) return 30;
+    return 34;
   }, [currentMode, width]);
 
   const singleLetterStates = useMemo(() => {
@@ -201,7 +204,12 @@ export function GameScreen() {
         />
       ) : null}
 
-      <View style={styles.contentContainer}>
+      <View
+        style={[
+          styles.contentContainer,
+          currentMode === 'quarteto' && styles.contentContainerQuarteto,
+        ]}
+      >
         <Header
           currentMode={currentMode}
           onSelectMode={handleModeChange}
@@ -260,64 +268,27 @@ export function GameScreen() {
               )}
             </View>
           ) : (
-            <View style={styles.quartetoArea}>
-              <View style={styles.quartetoRow}>
-                {state.boards[0] && (
-                  <View style={styles.boardCol}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quartetoScrollContent}
+            >
+              <View style={styles.quartetoLineArea}>
+                {state.boards.map((board, idx) => (
+                  <View key={idx} style={styles.boardCol}>
                     <Board
-                      guesses={state.boards[0].guesses}
+                      guesses={board.guesses}
                       currentGuess={state.currentGuess}
                       wordLength={state.config.wordLength}
                       maxAttempts={state.config.maxAttempts}
-                      isSolved={state.boards[0].isSolved}
+                      isSolved={board.isSolved}
                       tileSize={tileSize}
                       shakeKey={shakeKey}
                     />
                   </View>
-                )}
-                {state.boards[1] && (
-                  <View style={styles.boardCol}>
-                    <Board
-                      guesses={state.boards[1].guesses}
-                      currentGuess={state.currentGuess}
-                      wordLength={state.config.wordLength}
-                      maxAttempts={state.config.maxAttempts}
-                      isSolved={state.boards[1].isSolved}
-                      tileSize={tileSize}
-                      shakeKey={shakeKey}
-                    />
-                  </View>
-                )}
+                ))}
               </View>
-              <View style={styles.quartetoRow}>
-                {state.boards[2] && (
-                  <View style={styles.boardCol}>
-                    <Board
-                      guesses={state.boards[2].guesses}
-                      currentGuess={state.currentGuess}
-                      wordLength={state.config.wordLength}
-                      maxAttempts={state.config.maxAttempts}
-                      isSolved={state.boards[2].isSolved}
-                      tileSize={tileSize}
-                      shakeKey={shakeKey}
-                    />
-                  </View>
-                )}
-                {state.boards[3] && (
-                  <View style={styles.boardCol}>
-                    <Board
-                      guesses={state.boards[3].guesses}
-                      currentGuess={state.currentGuess}
-                      wordLength={state.config.wordLength}
-                      maxAttempts={state.config.maxAttempts}
-                      isSolved={state.boards[3].isSolved}
-                      tileSize={tileSize}
-                      shakeKey={shakeKey}
-                    />
-                  </View>
-                )}
-              </View>
-            </View>
+            </ScrollView>
           )}
         </ScrollView>
 
@@ -375,6 +346,9 @@ const styles = StyleSheet.create({
     maxWidth: 720,
     alignSelf: 'center',
   },
+  contentContainerQuarteto: {
+    maxWidth: 1020,
+  },
   boardsScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -392,23 +366,26 @@ const styles = StyleSheet.create({
     gap: 16,
     flexWrap: 'wrap',
   },
-  quartetoArea: {
+  quartetoScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    paddingHorizontal: 8,
   },
-  quartetoRow: {
+  quartetoLineArea: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 12,
-    flexWrap: 'wrap',
+    gap: 10,
   },
   boardCol: {
     alignItems: 'center',
   },
   keyboardArea: {
     paddingHorizontal: 4,
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
   },
   loading: {
     flex: 1,
